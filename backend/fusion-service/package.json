@@ -1,8 +1,8 @@
 {
-  "name": "bandhan-fn-fusion",
+  "name": "pawse-fn-fusion",
   "version": "1.0.0",
   "private": true,
-  "description": "PetPulse (Bandhan) fusion function — IoT Hub telemetry -> fusion scoring -> Cosmos DB + Web PubSub + Web Push",
+  "description": "Pawse fusion function — IoT Hub telemetry -> fusion scoring -> Cosmos DB + Web PubSub + Web Push. Deploys to the Azure Function App 'bandhan-fn-fusion' (named pre-rename).",
   "main": "src/functions/*.js",
   "scripts": {
     "start": "func start"

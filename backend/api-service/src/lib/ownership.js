@@ -1,6 +1,6 @@
 const cosmos = require("./cosmos");
 
-// SYSTEM_DESIGN §8: "every bandhan-fn-api call is scoped server-side to the logged-in
+// SYSTEM_DESIGN §8: "every API call is scoped server-side to the logged-in
 // owner's own dogId, not just hidden in the UI" — this is the one place that check lives.
 async function requireOwnedDog(dogId, ownerId) {
   let dog;

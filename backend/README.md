@@ -1,6 +1,8 @@
-# Bandhan backend
+# Pawse backend
 
 Two independently deployed services, matching [docs/SYSTEM_DESIGN.md](../docs/SYSTEM_DESIGN.md) exactly — this is the microservices boundary for this build: one event-driven ingestion/fusion service, one request-driven API service. Splitting further (e.g. a separate auth service) isn't justified at this scale and isn't in the locked design.
+
+> The project renamed from PetPulse/Bandhan to Pawse after these Azure resources were provisioned. `bandhan-fn-fusion`, `bandhan-fn-api`, `rg-bandhan-dev`, etc. are the real, live resource names — not a leftover typo. Renaming them means recreating each resource, so that's deferred to a separate decision.
 
 | Service | Deploys to | Trigger | Owns |
 |---|---|---|---|

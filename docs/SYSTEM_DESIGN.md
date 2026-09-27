@@ -1,8 +1,10 @@
-# PetPulse (Bandhan) — System Design Document
+# Pawse (formerly PetPulse / Bandhan) — System Design Document
 
 Team: **Origami Treats**
 Status: v1 — companion **website** + Azure backend + ESP32 collar firmware
 Source of truth for scope: [PRD.md](./PRD.md). This doc is the engineering expansion — it does not invent requirements the PRD doesn't have.
+
+> Renamed from PetPulse/Bandhan to **Pawse**. Every resource name below (`bandhan-*`, `rg-bandhan-dev`) was provisioned before the rename and is already live — Cosmos DB, IoT Hub, and Function Apps can't be renamed in place, so migrating them to `pawse-*` means recreating each one and copying data across. That's a deliberate, separate decision, not done as part of this rename.
 
 ---
 

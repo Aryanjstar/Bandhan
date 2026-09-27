@@ -1,8 +1,8 @@
 {
-  "name": "bandhan-fn-api",
+  "name": "pawse-fn-api",
   "version": "1.0.0",
   "private": true,
-  "description": "PetPulse (Bandhan) website API — owner auth, dogs, events, settings, command loop",
+  "description": "Pawse website API — owner auth, dogs, events, settings, command loop. Deploys to the Azure Function App 'bandhan-fn-api' (named pre-rename).",
   "main": "src/functions/*.js",
   "scripts": {
     "start": "func start"

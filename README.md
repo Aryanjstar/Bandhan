@@ -1,10 +1,12 @@
-# Bandhan (PetPulse)
+# Pawse
 
 A collar that watches how a dog moves and sounds while its owner is away, learns what's normal for that specific dog, and alerts the owner the moment something looks like physical or emotional distress.
 
 This repo is early. The **PRD and system design are locked**; the website and firmware are not written yet.
 
 Team: **Origami Treats**
+
+> Renamed from PetPulse/Bandhan to **Pawse**. The live Azure resources (`rg-bandhan-dev` and everything in it) were provisioned before the rename and still use the `bandhan-*` prefix — migrating those to `pawse-*` names means recreating several of them (Cosmos DB, IoT Hub, Function Apps don't support in-place rename), so that's a deliberate follow-up decision, not done here.
 
 ## Start here
 
@@ -22,7 +24,7 @@ Two MPU6050 units (accelerometer + gyroscope) and a condenser mic on the collar 
 - [x] Idea, research, problem statement
 - [x] PRD (v1) + system design
 - [ ] Firmware — sensor loop, on-device classifier, beep logic
-- [x] Azure backend — IoT Hub, fusion function, Cosmos DB, website API (`rg-bandhan-dev`, `centralindia`) — see [backend/README.md](backend/README.md)
+- [x] Azure backend — IoT Hub, fusion function, Cosmos DB, website API (`rg-bandhan-dev`, `centralindia`, pre-rename names — see note above) — see [backend/README.md](backend/README.md)
 - [ ] Website — dashboard, event feed, command controls (`frontend/`, not started)
 - [ ] Pilot — first real collar on a first real dog
 
