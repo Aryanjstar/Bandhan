@@ -266,7 +266,7 @@ function Intro({ onDone }: { onDone: () => void }) {
     <div className="absolute inset-0 bg-black overflow-hidden">
       <video
         className="absolute inset-0 size-full object-cover transition-[filter] duration-500 ease-out"
-        style={{ filter: dimmed ? 'brightness(0)' : 'brightness(1)' }}
+        style={{ filter: dimmed ? 'brightness(0.35)' : 'brightness(1)' }}
         src="/video/pawse-opening.mp4"
         autoPlay
         muted
