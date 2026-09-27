@@ -49,5 +49,6 @@ manifest for provenance. No remote texture or demo generator is required.
 
 ## Git inspection
 
-At inspection, `git status` reports that this directory is not a Git repository.
-No commit, staging, or repository initialization is part of this extraction.
+The donor prototype directory had no Git metadata. This extracted module is
+included in Bandhan under `frontend/`; the parent repository owns its review and
+version history.

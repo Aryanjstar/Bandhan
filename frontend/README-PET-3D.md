@@ -5,9 +5,11 @@ neck/head orientation, and plays activity animations. Sensor transport belongs
 to the parent application. The reusable viewer has no dependency on the demo
 sensor generator, sliders, telemetry, recording, or demo page.
 
-The demo at `/pet-digital-twin-demo` uses this same public component. Model,
-lighting, camera, animation mathematics, and the dog material palette are
-preserved. `PET-3D-DEPENDENCIES.md` records the inspection and extraction map.
+This reusable viewer is included under `frontend/` for the Bandhan website. The
+website itself has not been scaffolded yet, so the component is ready to mount
+when its React/Next.js frontend is created. Model, lighting, camera, animation
+mathematics, and the dog material palette are preserved.
+`PET-3D-DEPENDENCIES.md` records the inspection and extraction map.
 
 ## Architecture
 
@@ -52,13 +54,16 @@ No Vite-specific runtime API is required; optional development logging checks
 `import.meta.env?.DEV`. There is no network font requirement; DM Sans is used if
 provided by the host, otherwise sans-serif. The demo still supplies its fonts.
 
-## Files to copy
+## Staged files
 
-Copy **all of `src/pet-3d` except `examples/`**, plus the GLB and attribution below.
-No old compatibility export under `src/components`, `src/hooks` or `src/utils`
-is required. The public index imports its own scoped viewer CSS automatically.
+The files listed below are currently under `frontend/` in this repository.
+Paths in this guide are relative to that directory. The core is all of `src/pet-3d`
+except `examples/`; examples are included as optional integration references.
+The model and its attribution are also included. No old compatibility export
+under `src/components`, `src/hooks` or `src/utils` is required. The public index
+imports its own scoped viewer CSS automatically.
 
-| File (relative to repository root) | Purpose | Required / Optional |
+| File (relative to `frontend/`) | Purpose | Required / Optional |
 | --- | --- | --- |
 | `src/pet-3d/index.js` | Public exports | Required |
 | `src/pet-3d/PetDigitalTwin.jsx` | Prop-driven component and ref API | Required |
@@ -488,21 +493,16 @@ scripts, tests, build output and node_modules are not integration dependencies.
 
 ## Git and validation
 
-`.gitignore` excludes only standard dependency/build/cache/editor/env artifacts
-and test-results. `src/`, `public/`, lockfiles, docs and the GLB are not ignored.
-`.env.example` is explicitly allowed. No global `*.glb` ignore is used.
-This supplied directory has **no .git repository**: status/diff/tracked-file
-checks cannot truthfully report tracked assets. No repository was initialized,
-files staged, or commit created. Add the integration files to the destination
-application's Git repository using its usual review workflow.
+The parent `Bandhan` Git repository tracks this `frontend/` directory. Its
+`.gitignore` keeps source, documentation, and the GLB trackable while excluding
+common build/cache artifacts and environment files; `.env.example` is allowed.
 
-Run `npm test` and `npm run build`. The integration tests load the real GLB and
-exercise normalized flat/nested frames, pitch, roll, tare/reset, activity and
-module isolation without any DemoSensorService. Existing animation/sensor tests
-still run against compatibility exports. For browser verification run
-`npm run dev` and visit `/src/pet-3d/examples/integration.html`; it imports no demo
-service or CSS. Its REST and WebSocket modes require your own endpoints.
-The original demo remains at `/pet-digital-twin-demo`.
+The source prototype passed `npm test` (27 tests), `npm run build`, and a
+standalone integration build. Its browser integration page verified orientation,
+calibration/reset, and external activities. Bandhan currently has no frontend
+package manifest or React/Next.js scaffold, so these frontend checks should be
+run after that app is set up. The REST and WebSocket examples require your own
+endpoints.
 
 ## Integration checklist
 
