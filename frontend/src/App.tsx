@@ -18,7 +18,7 @@ const imgInfo    = `${A}/82ab3.svg`;
 // Figma Make export had vocal/whimper/bark-triggers/record before temperament/
 // alone-time/fears, which doesn't match the design screenshots.
 type Screen =
-  | 'intro' | 'splash' | 'paw' | 'onboarding'
+  | 'intro' | 'paw' | 'onboarding'
   | 'name' | 'breed' | 'breed-mixed'
   | 'details' | 'energy' | 'temperament'
   | 'alone-time' | 'fears' | 'vocal'
@@ -26,7 +26,7 @@ type Screen =
   | 'congrats';
 
 const ORDER: Screen[] = [
-  'intro', 'splash', 'paw',
+  'intro', 'paw',
   'name', 'breed', 'breed-mixed',
   'details', 'onboarding', 'energy',
   'temperament', 'alone-time', 'fears',
@@ -313,8 +313,7 @@ export default function App() {
   useEffect(() => { ensureOwner().catch(() => {}); }, []);
 
   useEffect(() => {
-    if (screen === 'splash') { const t = setTimeout(() => go('paw'), 1800); return () => clearTimeout(t); }
-    if (screen === 'paw')    { const t = setTimeout(() => go('name'), 1000); return () => clearTimeout(t); }
+    if (screen === 'paw') { const t = setTimeout(() => go('name'), 1000); return () => clearTimeout(t); }
   }, [screen]);
 
   useEffect(() => {
@@ -357,19 +356,7 @@ export default function App() {
 
   // ── Screens ─────────────────────────────────────────────────────────────────
 
-  const IntroScreen = <Intro onDone={() => go('splash')} />;
-
-  const Splash = (
-    <div className="absolute inset-0 bg-white flex items-center justify-center">
-      <svg width="210" height="44" viewBox="0 0 210 44" fill="none" style={{ display: 'block' }}>
-        <text x="0" y="36" fontFamily="Poppins,sans-serif" fontWeight="700" fontSize="40" fill="#0d0d0d" letterSpacing="-1">PAWS</text>
-        <circle cx="106" cy="10" r="4.5" fill="#3b62f5" />
-        <ellipse cx="96" cy="13" rx="3.5" ry="4" fill="#3b62f5" />
-        <ellipse cx="116" cy="13" rx="3.5" ry="4" fill="#3b62f5" />
-        <text x="162" y="36" fontFamily="Poppins,sans-serif" fontWeight="700" fontSize="40" fill="#a8b8f8">E</text>
-      </svg>
-    </div>
-  );
+  const IntroScreen = <Intro onDone={() => go('paw')} />;
 
   const Paw = <div className="absolute inset-0 bg-white overflow-hidden"><PawBg /></div>;
 
@@ -636,7 +623,7 @@ export default function App() {
           </div>
           <p className="text-white text-[14px] leading-relaxed" style={reg}>Begin monitoring your dog's activity and enjoy peace of mind.</p>
         </div>
-        <button onClick={() => { setScreen('splash'); setPrev(null); }}
+        <button onClick={() => { setScreen('paw'); setPrev(null); }}
           className="bg-white rounded-[32px] flex items-center justify-center px-8 py-3 w-full active:scale-95 transition-transform"
           style={{ boxShadow: '0 4px 2px rgba(0,0,0,.25)' }}>
           <span className="text-[#1b5df1] text-[20px]" style={sb}>Get Started</span>
@@ -646,7 +633,7 @@ export default function App() {
   );
 
   const SCREENS: Record<Screen, React.ReactNode> = {
-    intro: IntroScreen, splash: Splash, paw: Paw, onboarding: Onboarding,
+    intro: IntroScreen, paw: Paw, onboarding: Onboarding,
     name: Name, breed: Breed, 'breed-mixed': BreedMixed,
     details: Details, energy: Energy, temperament: Temperament,
     'alone-time': AloneTime, fears: Fears, vocal: Vocal,
