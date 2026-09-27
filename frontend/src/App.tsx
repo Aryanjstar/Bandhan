@@ -306,6 +306,8 @@ export default function App() {
   const [barkTriggers,setBarkTriggers]= useState<Set<string>>(new Set());
   const [recording,   setRecording]   = useState(false);
   const [recTime,     setRecTime]     = useState(0);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const [recordingBase64, setRecordingBase64] = useState<string | null>(null);
   const [temperament, setTemperament] = useState<Set<string>>(new Set());
   const [aloneTime,   setAloneTime]   = useState('');
   const [aloneDetail, setAloneDetail] = useState('');
@@ -316,6 +318,9 @@ export default function App() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const scale = useStageScale();
   const go = (next: Screen) => { setPrev(screen); setScreen(next); };
 
@@ -331,6 +336,46 @@ export default function App() {
     else { if (timerRef.current) clearInterval(timerRef.current); }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [recording]);
+
+  // Release the mic if the user navigates away mid-recording.
+  useEffect(() => () => { micStreamRef.current?.getTracks().forEach(t => t.stop()); }, []);
+
+  const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const startRecording = async () => {
+    setRecordError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      recordedChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        setRecordingBase64(await blobToBase64(blob));
+        stream.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecTime(0);
+      setRecording(true);
+    } catch {
+      // Denied permission, no mic hardware, or insecure context (getUserMedia
+      // needs https or localhost) — surface it instead of silently no-op'ing.
+      setRecordError('Could not access the microphone — check your browser permission and try again.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   const toggle = (set: Set<string>, val: string) => { const n = new Set(set); n.has(val) ? n.delete(val) : n.add(val); return n; };
@@ -355,10 +400,18 @@ export default function App() {
         aloneTimeBehavior: aloneTime,
         aloneTimeDetail: aloneDetail || undefined,
         fears: [...fears],
+        baselineRecordingBase64: recordingBase64 || undefined,
       });
       go('congrats');
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Could not save — check your connection and try again.');
+      // A network-level failure surfaces as a bare "TypeError: Failed to
+      // fetch" from the browser — not something to show a person as-is.
+      const networkDown = err instanceof TypeError;
+      setSaveError(
+        networkDown
+          ? "Can't reach the server — check the backend is running and try again."
+          : err instanceof Error ? err.message : 'Could not save — check your connection and try again.'
+      );
     } finally {
       setSaving(false);
     }
@@ -594,7 +647,7 @@ export default function App() {
           <p className="text-white text-[24px] leading-snug" style={sb}>Record a short clip of your dog's normal bark/whine to help calibrate the baseline faster.</p>
         </div>
         <div className="flex flex-col gap-3 w-full">
-          <button onClick={() => setRecording(r => !r)}
+          <button onClick={() => (recording ? stopRecording() : startRecording())}
             className="w-full bg-[rgba(255,255,255,.1)] rounded-[32px] px-6 py-4 flex gap-4 items-center active:opacity-80 transition-opacity"
             style={{ boxShadow: recording ? 'inset 0 0 0 2px rgba(255,255,255,.4)' : 'none' }}>
             <div className="rounded-[24px] size-12 flex items-center justify-center shrink-0"
@@ -602,15 +655,22 @@ export default function App() {
               <img alt="" src={imgMic} width={24} height={24} />
             </div>
             <div className="flex-1 flex flex-col gap-[2px] items-start min-w-0">
-              <p className="text-white text-[18px]" style={sb}>{recording ? 'Recording…' : 'Record bark/whine'}</p>
-              <p className="text-[rgba(255,255,255,.7)] text-[13px] whitespace-nowrap" style={med}>{recording ? 'Tap to stop' : 'Tap to start recording'}</p>
+              <p className="text-white text-[18px]" style={sb}>
+                {recording ? 'Recording…' : recordingBase64 ? 'Clip recorded' : 'Record bark/whine'}
+              </p>
+              <p className="text-[rgba(255,255,255,.7)] text-[13px] whitespace-nowrap" style={med}>
+                {recording ? 'Tap to stop' : recordingBase64 ? 'Tap to re-record' : 'Tap to start recording'}
+              </p>
             </div>
             <span className="text-white text-[14px] shrink-0" style={sb}>{fmt(recTime)}</span>
           </button>
           <div className="flex gap-2 items-center w-full">
             <img alt="" src={imgInfo} width={16} height={16} className="shrink-0" />
-            <p className="text-white text-[12px] flex-1" style={reg}>Hold the phone near your dog and tap the mic to start.</p>
+            <p className="text-white text-[12px] flex-1" style={reg}>Hold the phone near your dog and tap the mic to start. Your browser will ask for microphone permission.</p>
           </div>
+          {recordError && (
+            <p className="text-[13px] text-center" style={{ ...med, color: '#ffb4b4' }}>{recordError}</p>
+          )}
           {saveError && (
             <p className="text-[13px] text-center" style={{ ...med, color: '#ffb4b4' }}>{saveError}</p>
           )}
@@ -673,10 +733,14 @@ export default function App() {
           if (active) tx = '0%';
           else if (isPrev) tx = curIdx > prevIdx ? '-100%' : '100%';
           else tx = thisIdx < curIdx ? '-100%' : '100%';
+          // The video already dims to black on its own; sliding the next screen
+          // in over it would look like it's sliding on top of the video. Cut
+          // straight to it instead — every later transition still slides.
+          const isFirstHandoff = prev === 'intro';
           return (
             <div key={id} className="absolute inset-0" style={{
               transform: `translateX(${tx})`,
-              transition: 'transform 360ms cubic-bezier(0.4,0,0.2,1)',
+              transition: isFirstHandoff ? 'none' : 'transform 360ms cubic-bezier(0.4,0,0.2,1)',
               pointerEvents: active ? 'auto' : 'none',
               willChange: 'transform',
             }}>

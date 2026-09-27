@@ -57,6 +57,7 @@ export interface DogProfilePayload {
   aloneTimeBehavior: string;
   aloneTimeDetail?: string;
   fears: string[];
+  baselineRecordingBase64?: string;
 }
 
 export async function createDog(payload: DogProfilePayload): Promise<{ dog: Record<string, unknown> }> {

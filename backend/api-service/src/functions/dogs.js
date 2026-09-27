@@ -28,6 +28,14 @@ app.http("dogs", {
       const body = await request.json();
       if (!body.name) return json(400, { error: "dog name is required" });
 
+      // Optional baseline bark/whine clip recorded in the browser (Record
+      // screen), base64-encoded. Cosmos documents cap at 2MB — reject an
+      // oversized clip at the boundary instead of letting the write fail opaquely.
+      const MAX_RECORDING_BASE64_CHARS = 1_500_000; // ~1.1MB decoded
+      if (body.baselineRecordingBase64 && body.baselineRecordingBase64.length > MAX_RECORDING_BASE64_CHARS) {
+        return json(400, { error: "recording is too large" });
+      }
+
       const dogId = crypto.randomUUID();
       const dog = {
         id: dogId,
@@ -50,6 +58,7 @@ app.http("dogs", {
         aloneTimeBehavior: body.aloneTimeBehavior || null,
         aloneTimeDetail: body.aloneTimeDetail || null,
         fears: Array.isArray(body.fears) ? body.fears : [],
+        baselineRecordingBase64: body.baselineRecordingBase64 || null,
         createdAt: new Date().toISOString(),
       };
       await cosmos.dogs.items.create(dog);
