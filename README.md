@@ -12,6 +12,7 @@ Team: **Origami Treats**
 |---|---|
 | [docs/PRD.md](docs/PRD.md) | Locked scope, goals, hardware BOM, functional requirements, edge cases, decisions already made |
 | [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Azure architecture, data model, API surface, data flow, security, known simplifications |
+| [frontend/README-PET-3D.md](frontend/README-PET-3D.md) | Reusable React 3D dog viewer, sensor payload contract, integration examples |
 
 ## Idea in one breath
 
