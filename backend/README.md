@@ -47,6 +47,8 @@ Expected JSON body (`dogId` required, `timestamp` defaults to now if omitted):
 
 Both services must be running (`npm start` in each) for this path to work end to end.
 
+No collar soldered yet? `tools/device-simulator/` (`node simulate.js --dog <dogId> --device <deviceId>`) stands in for it — generates single-MPU6050 accel data, classifies it with the same rule-based classifier `firmware/collar/collar.ino` runs on-device (`lib/motionClassifier.js`), and POSTs to `/api/sensor-data` at the real duty-cycled rate. It also polls `/api/devices/{deviceId}/pending-command` like the real firmware does, so `POST /api/dogs/{id}/check-in` (the wellness check-in feature) can be exercised without hardware too. Press `b` while it's running to simulate the collar's demo button (PRD §8) and force an immediate distress alert through the full pipeline.
+
 ## Deploy
 
 ```bash
