@@ -28,7 +28,11 @@ app.http("dogSettings", {
 
       const { resource: device } = await cosmos.devices.item(dogId, dogId).read().catch(() => ({ resource: null }));
       if (device?.deviceId) {
-        await updateDeviceTwin(device.deviceId, { settings });
+        try {
+          await updateDeviceTwin(device.deviceId, { settings });
+        } catch (err) {
+          context.log("device twin update skipped (no IoT Hub device provisioned yet)", err.message);
+        }
       }
 
       return json(200, { settings });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createDog, ensureOwner } from './lib/api';
+import { ApiError, createDog, ensureOwner } from './lib/api';
 
 const A = '/assets';
 const imgPawBg   = `${A}/eb15b.svg`;
@@ -289,7 +289,7 @@ function Intro({ onDone }: { onDone: () => void }) {
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
-export default function App() {
+export default function App({ onFinished }: { onFinished?: () => void }) {
   const [screen, setScreen] = useState<Screen>('intro');
   const [prev, setPrev]     = useState<Screen | null>(null);
 
@@ -404,6 +404,9 @@ export default function App() {
       });
       go('congrats');
     } catch (err) {
+      // v1 allows one dog per owner — a 409 means this browser already finished
+      // onboarding once, so there's a dog to land on in the dashboard.
+      if (err instanceof ApiError && err.status === 409) { go('congrats'); return; }
       // A network-level failure surfaces as a bare "TypeError: Failed to
       // fetch" from the browser — not something to show a person as-is.
       const networkDown = err instanceof TypeError;
@@ -699,7 +702,7 @@ export default function App() {
           </div>
           <p className="text-white text-[14px] leading-relaxed" style={reg}>Begin monitoring your dog's activity and enjoy peace of mind.</p>
         </div>
-        <button onClick={() => { setScreen('name'); setPrev(null); }}
+        <button onClick={() => (onFinished ? onFinished() : (setScreen('name'), setPrev(null)))}
           className="bg-white rounded-[32px] flex items-center justify-center px-8 py-3 w-full active:scale-95 transition-transform"
           style={{ boxShadow: '0 4px 2px rgba(0,0,0,.25)' }}>
           <span className="text-[#1b5df1] text-[20px]" style={sb}>Get Started</span>

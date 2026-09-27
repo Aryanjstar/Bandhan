@@ -1,0 +1,16 @@
+.pawse-scroll {
+  scrollbar-width: none;
+}
+.pawse-scroll::-webkit-scrollbar {
+  display: none;
+}
+.pawse-twin .pet-3d.viewer {
+  height: 100%;
+  border: none;
+  border-radius: 24px;
+}
+.pawse-twin .pet-3d .viewer-top,
+.pawse-twin .pet-3d .viewer-bottom,
+.pawse-twin .pet-3d .collar-note {
+  display: none;
+}
