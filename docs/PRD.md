@@ -1,13 +1,13 @@
-# PetPulse (Bandhan) — Product Requirements Document
+# Pawse (formerly PetPulse / Bandhan) — Product Requirements Document
 
-**Product:** PetPulse — a dog collar that detects physical and emotional distress in real time
-**Codename / repo:** Bandhan
+**Product:** Pawse — a dog collar that detects physical and emotional distress in real time
+**Codename / repo:** Pawse (renamed from Bandhan; live Azure resources provisioned before the rename still use the `bandhan-*` prefix — see [SYSTEM_DESIGN.md](./SYSTEM_DESIGN.md))
 **Team:** Origami Treats
 **Version:** 1.0
 **Status:** Ready to build
 **Audience:** Anyone implementing or reviewing a slice
 
-This PRD is the build-ready expansion of the PetPulse plan. It does not invent hardware or features beyond §9. Companion doc: [SYSTEM_DESIGN.md](./SYSTEM_DESIGN.md) — same plan, engineering detail.
+This PRD is the build-ready expansion of the Pawse plan. It does not invent hardware or features beyond §9. Companion doc: [SYSTEM_DESIGN.md](./SYSTEM_DESIGN.md) — same plan, engineering detail.
 
 ---
 
@@ -15,7 +15,7 @@ This PRD is the build-ready expansion of the PetPulse plan. It does not invent h
 
 Dogs can't ask for help. When an owner leaves the house, the dog's day becomes a black box.
 
-PetPulse is a collar-mounted wearable that continuously reads a dog's **motion** (two MPU6050 accelerometer/gyroscope units) and **vocal pattern** (a condenser microphone, pattern only — never raw audio) and compares both against that specific dog's own learned baseline. When the reading deviates enough to look like physical distress (seizure-like shaking, limping, prolonged stillness) or emotional distress (whimpering, crying, atypical barking), the collar beeps immediately and pushes an alert to the owner's website.
+Pawse is a collar-mounted wearable that continuously reads a dog's **motion** (two MPU6050 accelerometer/gyroscope units) and **vocal pattern** (a condenser microphone, pattern only — never raw audio) and compares both against that specific dog's own learned baseline. When the reading deviates enough to look like physical distress (seizure-like shaking, limping, prolonged stillness) or emotional distress (whimpering, crying, atypical barking), the collar beeps immediately and pushes an alert to the owner's website.
 
 A second, secondary feature rides the same hardware: the owner can send the dog a **beep cue** from the website (short beep = "sit", long beep = "come to owner"). The two MPU6050 units read whether the dog's resulting posture matches the cue, and that match/no-match becomes the reward signal for a reinforcement-learning loop that improves the dog's response over time. This is framed as a lightweight **communication channel** between owner and dog — not only a training mechanic.
 
@@ -329,7 +329,7 @@ The product must behave calmly here — not new pages.
 
 Do not reopen in implementation without an explicit product change:
 
-- Product name: **PetPulse**. Repo/project codename: **Bandhan**. Team: **Origami Treats**.
+- Product name: **Pawse** (renamed from PetPulse; repo codename was Bandhan). Team: **Origami Treats**.
 - Core deliverable this build: **passive distress monitoring** (dual MPU6050 + mic + local beep). Command-training loop is an added feature, not the primary deliverable.
 - No speaker, no raw audio, no two-way live audio, ever — mic is pattern-analysis only.
 - Command cue vocabulary is beep-only for v1: short = "sit", long = "come to owner". It is framed as a communication channel between owner and dog, not only a training mechanic.

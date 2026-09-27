@@ -1,8 +1,10 @@
-# PetPulse (Bandhan) — System Design Document
+# Pawse (formerly PetPulse / Bandhan) — System Design Document
 
 Team: **Origami Treats**
 Status: v1 — companion **website** + Azure backend + ESP32 collar firmware
 Source of truth for scope: [PRD.md](./PRD.md). This doc is the engineering expansion — it does not invent requirements the PRD doesn't have.
+
+> Renamed from PetPulse/Bandhan to **Pawse**. Every resource name below (`bandhan-*`, `rg-bandhan-dev`) was provisioned before the rename and is already live — Cosmos DB, IoT Hub, and Function Apps can't be renamed in place, so migrating them to `pawse-*` means recreating each one and copying data across. That's a deliberate, separate decision, not done as part of this rename.
 
 ---
 
@@ -112,6 +114,7 @@ All containers partitioned by `dogId` for query locality. `deviceId` and `dogId`
 | `events` | `/dogId` | timestamp, class (`minor_anomaly`\|`distress`\|`low_battery`\|`sustained_stillness`), confidence, sourceSignals, feedback (`accurate`\|`false`\|unset) |
 | `baselines` | `/dogId` | rolling motion-energy mean/variance, rest-duration pattern, bark-rate pattern, `learning` flag, snapshot timestamp |
 | `commandSessions` | `/dogId` | cue (`sit`\|`come`), timestamp, observedPosture, matchResult (`match`\|`no_match`\|`approximate_match`\|`timeout`) |
+| `owners` | `/ownerId` | name, unique email, bcrypt passwordHash, pushSubscriptions (Web Push subscription objects) — added during implementation; PRD §6 defines Owner but the original container table (this section) omitted it |
 
 `matchResult` carries `approximate_match` as a distinct value (not folded into `match`) specifically so the website can render PRD FR-5.2's "approximate, not location-confirmed" requirement from the data itself, not from UI-only copy that could drift out of sync.
 
@@ -160,7 +163,7 @@ Realtime (no polling): the dashboard opens a Web PubSub connection on load and r
 - Collar ↔ IoT Hub: per-device SAS token, rotated on (re-)provisioning (§9.4).
 - `bandhan-fn-fusion` and `bandhan-fn-api` use **system-assigned managed identities** to reach `bandhan-cosmos-dev` and `bandhan-kv-dev` — no connection strings in code or app settings.
 - `bandhan-kv-dev` holds the IoT Hub service connection string (used to send C2D messages) and the Web Push VAPID key pair.
-- `bandhan-web`'s built-in authentication (GitHub/Google/Microsoft providers) is the only owner-auth mechanism in v1 — every `bandhan-fn-api` call is scoped server-side to the logged-in owner's own `dogId`s, not just hidden in the UI.
+- Owner auth is email + password (bcrypt hash, server-enforced strong-password policy) issuing a 7-day JWT from `bandhan-fn-api` — implemented ahead of `bandhan-web`'s built-in-provider plan below, since there's no website yet to redirect through and no dedicated Google Cloud project designated for an OAuth client. Every `bandhan-fn-api` call resolves `ownerId` from that JWT server-side and checks it against the target `dog.ownerId`, not just hiding it in the UI. Revisit `bandhan-web`'s built-in authentication (GitHub/Google/Microsoft providers) once the website exists — the JWT model can sit behind it or be replaced by it.
 - CORS on `bandhan-fn-api` locked to the `bandhan-web` origin.
 - TLS 1.2 enforced end-to-end (IoT Hub and Static Web Apps default to this; not something to configure separately).
 
