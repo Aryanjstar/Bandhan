@@ -18,7 +18,7 @@ const imgInfo    = `${A}/82ab3.svg`;
 // Figma Make export had vocal/whimper/bark-triggers/record before temperament/
 // alone-time/fears, which doesn't match the design screenshots.
 type Screen =
-  | 'intro' | 'paw' | 'onboarding'
+  | 'intro' | 'onboarding'
   | 'name' | 'breed' | 'breed-mixed'
   | 'details' | 'energy' | 'temperament'
   | 'alone-time' | 'fears' | 'vocal'
@@ -26,7 +26,7 @@ type Screen =
   | 'congrats';
 
 const ORDER: Screen[] = [
-  'intro', 'paw',
+  'intro',
   'name', 'breed', 'breed-mixed',
   'details', 'onboarding', 'energy',
   'temperament', 'alone-time', 'fears',
@@ -103,20 +103,30 @@ function NextBtn({ onClick, disabled = false, label = 'Next' }: {
 }
 
 // ─── Dropdown (radio, single-select) ─────────────────────────────────────────
-function Dropdown({ label, options, value, onSelect, placeholder = 'Please select' }: {
+function Dropdown({ label, options, value, onSelect, placeholder = 'Please select', hidden = false, onOpenChange }: {
   label?: string;
   options: string[];
   value: string;
   onSelect: (v: string) => void;
   placeholder?: string;
+  // When part of a stacked group (e.g. the Details screen), the group hides
+  // every other field while one is expanded, then brings them back once it
+  // closes — this collapses this field out of that group instead.
+  hidden?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const toggle = () => { const next = !open; setOpen(next); onOpenChange?.(next); };
+  const pick = (opt: string) => { onSelect(opt); setOpen(false); onOpenChange?.(false); };
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div
+      className="flex flex-col gap-3 w-full overflow-hidden transition-all duration-250 ease-out"
+      style={{ maxHeight: hidden ? '0px' : '600px', opacity: hidden ? 0 : 1 }}
+    >
       {label && <p className="text-white text-[24px] leading-snug" style={sb}>{label}</p>}
       <div className="flex flex-col gap-2 w-full">
         <button
-          onClick={() => setOpen(o => !o)}
+          onClick={toggle}
           className="w-full bg-[rgba(255,255,255,.1)] rounded-[32px] px-8 py-3 flex items-center justify-between active:opacity-80 transition-opacity"
         >
           <span className="text-white text-[20px] text-left" style={med}>
@@ -140,7 +150,7 @@ function Dropdown({ label, options, value, onSelect, placeholder = 'Please selec
               return (
                 <button
                   key={opt}
-                  onClick={() => { onSelect(opt); setOpen(false); }}
+                  onClick={() => pick(opt)}
                   className="w-[310px] mx-auto px-5 py-[14px] rounded-[24px] flex items-center text-left transition-colors active:opacity-70"
                   style={{ background: sel ? 'rgba(27,93,241,.2)' : 'transparent' }}
                 >
@@ -300,6 +310,7 @@ export default function App() {
   const [aloneTime,   setAloneTime]   = useState('');
   const [aloneDetail, setAloneDetail] = useState('');
   const [fears,       setFears]       = useState<Set<string>>(new Set());
+  const [detailsOpenField, setDetailsOpenField] = useState<string | null>(null);
 
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -313,7 +324,6 @@ export default function App() {
   useEffect(() => { ensureOwner().catch(() => {}); }, []);
 
   useEffect(() => {
-    if (screen === 'paw') { const t = setTimeout(() => go('name'), 1000); return () => clearTimeout(t); }
   }, [screen]);
 
   useEffect(() => {
@@ -356,9 +366,7 @@ export default function App() {
 
   // ── Screens ─────────────────────────────────────────────────────────────────
 
-  const IntroScreen = <Intro onDone={() => go('paw')} />;
-
-  const Paw = <div className="absolute inset-0 bg-white overflow-hidden"><PawBg /></div>;
+  const IntroScreen = <Intro onDone={() => go('name')} />;
 
   const Onboarding = (
     <div className="absolute inset-0 bg-[#1b5df1] overflow-hidden">
@@ -448,13 +456,21 @@ export default function App() {
       <PawBg /><Blur /><Logo />
       <div className="absolute left-8 flex flex-col gap-8 w-[326px]" style={{ top: 167 }}>
         <Dropdown label="Age" options={['< 1 year','1–2 years','3–5 years','6–9 years','10+ years']}
-          value={age} onSelect={setAge} />
+          value={age} onSelect={setAge}
+          hidden={detailsOpenField !== null && detailsOpenField !== 'age'}
+          onOpenChange={o => setDetailsOpenField(o ? 'age' : null)} />
         <Dropdown label="Sex" options={['Male','Female']}
-          value={sex} onSelect={setSex} />
+          value={sex} onSelect={setSex}
+          hidden={detailsOpenField !== null && detailsOpenField !== 'sex'}
+          onOpenChange={o => setDetailsOpenField(o ? 'sex' : null)} />
         <Dropdown label="Neutered?" options={['Yes','No']}
-          value={neutered} onSelect={setNeutered} />
+          value={neutered} onSelect={setNeutered}
+          hidden={detailsOpenField !== null && detailsOpenField !== 'neutered'}
+          onOpenChange={o => setDetailsOpenField(o ? 'neutered' : null)} />
         <Dropdown label="How long have you had this dog?" options={['< 1 year','1–2 years','3–5 years','6+ years']}
-          value={duration} onSelect={setDuration} />
+          value={duration} onSelect={setDuration}
+          hidden={detailsOpenField !== null && detailsOpenField !== 'duration'}
+          onOpenChange={o => setDetailsOpenField(o ? 'duration' : null)} />
       </div>
       <NextBtn onClick={() => go('onboarding')} disabled={!age || !sex || !neutered || !duration} />
     </div>
@@ -623,7 +639,7 @@ export default function App() {
           </div>
           <p className="text-white text-[14px] leading-relaxed" style={reg}>Begin monitoring your dog's activity and enjoy peace of mind.</p>
         </div>
-        <button onClick={() => { setScreen('paw'); setPrev(null); }}
+        <button onClick={() => { setScreen('name'); setPrev(null); }}
           className="bg-white rounded-[32px] flex items-center justify-center px-8 py-3 w-full active:scale-95 transition-transform"
           style={{ boxShadow: '0 4px 2px rgba(0,0,0,.25)' }}>
           <span className="text-[#1b5df1] text-[20px]" style={sb}>Get Started</span>
@@ -633,7 +649,7 @@ export default function App() {
   );
 
   const SCREENS: Record<Screen, React.ReactNode> = {
-    intro: IntroScreen, paw: Paw, onboarding: Onboarding,
+    intro: IntroScreen, onboarding: Onboarding,
     name: Name, breed: Breed, 'breed-mixed': BreedMixed,
     details: Details, energy: Energy, temperament: Temperament,
     'alone-time': AloneTime, fears: Fears, vocal: Vocal,
