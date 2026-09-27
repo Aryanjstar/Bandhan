@@ -50,13 +50,21 @@ app.http("dogCommand", {
       };
       await cosmos.commandSessions.items.upsert(session);
 
-      await sendCommand(device.deviceId, {
-        type: "command",
-        cueSessionId,
-        cue: cueDef.id,
-        beepPattern: cueDef.beepPattern,
-        responseWindowSec: RESPONSE_WINDOW_SEC,
-      });
+      // Same delivery split as dogCheckIn.js: local-only collars pick this up via
+      // devicePendingCommand.js; IoT Hub C2D is best-effort until a device identity exists.
+      device.pendingCommand = { cue: cueDef.id, cueSessionId, beepPattern: cueDef.beepPattern, issuedAt: timestamp };
+      await cosmos.devices.items.upsert(device);
+      try {
+        await sendCommand(device.deviceId, {
+          type: "command",
+          cueSessionId,
+          cue: cueDef.id,
+          beepPattern: cueDef.beepPattern,
+          responseWindowSec: RESPONSE_WINDOW_SEC,
+        });
+      } catch (err) {
+        context.log("cue C2D send skipped (no IoT Hub device provisioned yet)", err.message);
+      }
 
       return json(202, { session });
     } catch (err) {
