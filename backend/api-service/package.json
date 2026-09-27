@@ -5,7 +5,7 @@
   "description": "Pawse website API — owner auth, dogs, events, settings, command loop. Deploys to the Azure Function App 'bandhan-fn-api' (named pre-rename).",
   "main": "src/functions/*.js",
   "scripts": {
-    "start": "func start"
+    "start": "func start --port 7071 --address 0.0.0.0"
   },
   "engines": {
     "node": ">=24"
