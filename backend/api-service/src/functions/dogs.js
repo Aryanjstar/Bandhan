@@ -35,8 +35,21 @@ app.http("dogs", {
         ownerId,
         name: body.name,
         breed: body.breed || null,
+        breedDetail: body.breedDetail || null,
         age: body.age || null,
-        temperament: body.temperament || null,
+        // Profile metadata only (PRD §6: seeds default sensitivity thresholds,
+        // never substitutes for the learned baseline in `baselines` below).
+        sex: body.sex || null,
+        neutered: body.neutered || null,
+        ownedSince: body.ownedSince || null,
+        energyLevel: body.energyLevel ?? null,
+        vocalLevel: body.vocalLevel ?? null,
+        whimperFrequency: body.whimperFrequency || null,
+        barkTriggers: Array.isArray(body.barkTriggers) ? body.barkTriggers : [],
+        temperament: Array.isArray(body.temperament) ? body.temperament : (body.temperament || null),
+        aloneTimeBehavior: body.aloneTimeBehavior || null,
+        aloneTimeDetail: body.aloneTimeDetail || null,
+        fears: Array.isArray(body.fears) ? body.fears : [],
         createdAt: new Date().toISOString(),
       };
       await cosmos.dogs.items.create(dog);

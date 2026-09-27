@@ -2,7 +2,7 @@
 
 A collar that watches how a dog moves and sounds while its owner is away, learns what's normal for that specific dog, and alerts the owner the moment something looks like physical or emotional distress.
 
-This repo is early. The **PRD and system design are locked**; the website and firmware are not written yet.
+This repo is early. The **PRD and system design are locked**; the onboarding flow of the website exists (`frontend/`), the dashboard and firmware are not written yet.
 
 Team: **Origami Treats**
 
@@ -25,15 +25,24 @@ Two MPU6050 units (accelerometer + gyroscope) and a condenser mic on the collar 
 - [x] PRD (v1) + system design
 - [ ] Firmware — sensor loop, on-device classifier, beep logic
 - [x] Azure backend — IoT Hub, fusion function, Cosmos DB, website API (`rg-bandhan-dev`, `centralindia`, pre-rename names — see note above) — see [backend/README.md](backend/README.md)
-- [ ] Website — dashboard, event feed, command controls (`frontend/`, not started)
+- [x] Website onboarding — dog profile intake flow (`frontend/`, see [frontend/README.md](frontend/README.md))
+- [ ] Website dashboard — event feed, command controls, sensitivity settings
 - [ ] Pilot — first real collar on a first real dog
 
 ## Stack (planned)
 
 - **Collar firmware:** ESP32, dual MPU6050, condenser mic, buzzer + LED — TinyML on-device classifier.
 - **Cloud:** Azure IoT Hub (ingestion + device commands), Azure Functions (fusion + API), Cosmos DB (events/baselines), Web PubSub (live updates), Static Web Apps (website hosting) — see [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) for exact resource names and why each was chosen.
-- **Website:** React/Next.js — dashboard, activity/vocal trend charts, event feed, sensitivity settings, command-cue controls.
+- **Website:** React + Vite + Tailwind (`frontend/`) — onboarding is built; dashboard (activity/vocal trend charts, event feed, sensitivity settings, command-cue controls) is not.
 
 ## Local
 
-App commands will land here once the website and firmware are scaffolded.
+```bash
+# Backend (needs Azure Functions Core Tools v4 + az login — see backend/README.md)
+cd backend/api-service && npm install && npm start      # binds :7071
+
+# Frontend
+cd frontend && npm install && npm run dev                # http://localhost:5173
+```
+
+The frontend's onboarding flow calls the real api-service/Cosmos DB locally (see [frontend/README.md](frontend/README.md) for how it bootstraps an owner without a login screen).
