@@ -16,11 +16,36 @@ Both are Node.js 24 Azure Functions (v4 programming model), Consumption plan, sy
 Each service needs the [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and an `az login` session (local `DefaultAzureCredential` resolution falls back to the Azure CLI credential):
 
 ```bash
-cd backend/fusion-service && npm install && npm start
-cd backend/api-service && npm install && npm start
+cd backend/fusion-service && npm install && npm start   # binds 0.0.0.0:7072
+cd backend/api-service && npm install && npm start       # binds 0.0.0.0:7071
 ```
 
 `local.settings.json` in each service points at the real `rg-bandhan-dev` Cosmos DB/Key Vault — there's no local emulator for this pilot, so local runs read/write real (dev-tier) cloud data.
+
+Both `start` scripts bind `--address 0.0.0.0` (not just `localhost`) so a device on the same WiFi network can reach them, not just the machine running `func start`.
+
+### Collar (ESP32) sensor ingestion — local-only, no IoT Hub yet
+
+There's no IoT Hub device provisioned for the physical collar yet, so it doesn't use the WiFi+MQTT uplink described in SYSTEM_DESIGN.md §5 — that's still the long-term plan, deferred until there's real hardware to provision. For now, the collar POSTs telemetry directly over the local WiFi network:
+
+1. Find the Mac's LAN IP (must be on the same WiFi network as the collar): `ipconfig getifaddr en0`
+2. Collar posts telemetry JSON to: `http://<that LAN IP>:7071/api/sensor-data`
+3. `sensorData` (api-service, `src/functions/sensorData.js`) forwards the message to `localIngest` (fusion-service, `src/functions/localIngest.js`, `http://localhost:7072/api/ingest` — configurable via api-service's `FUSION_LOCAL_URL` env var), which runs the exact same fusion logic (`lib/telemetryProcessor.js`) that the production Event Hub trigger (`fusionTrigger.js`) uses.
+
+Expected JSON body (`dogId` required, `timestamp` defaults to now if omitted):
+```json
+{
+  "dogId": "test-dog",
+  "deviceId": "collar-cupid-001",
+  "motionClass": "normal|minor_anomaly|distress",
+  "vocalClass": "silence|whine_cry|distress_bark",
+  "stillDurationSec": 0,
+  "motionEnergy": 0,
+  "batteryPct": 80
+}
+```
+
+Both services must be running (`npm start` in each) for this path to work end to end.
 
 ## Deploy
 

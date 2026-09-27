@@ -5,7 +5,7 @@
   "description": "Pawse fusion function — IoT Hub telemetry -> fusion scoring -> Cosmos DB + Web PubSub + Web Push. Deploys to the Azure Function App 'bandhan-fn-fusion' (named pre-rename).",
   "main": "src/functions/*.js",
   "scripts": {
-    "start": "func start"
+    "start": "func start --port 7072 --address 0.0.0.0"
   },
   "engines": {
     "node": ">=24"
