@@ -1,0 +1,196 @@
+.pet-3d { font-family: "DM Sans", sans-serif; color: #263d34; font-size: 13px; min-width: 0; }
+.pet-3d, .pet-3d * { box-sizing: border-box; }
+.pet-3d button { font: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: background .16s, border-color .16s, box-shadow .16s; }
+.pet-3d button:focus-visible { outline: 3px solid #90bda5; outline-offset: 3px; }
+.pet-3d svg { flex-shrink: 0; }
+.pet-3d h3, .pet-3d p { margin: 0; }
+.pet-3d h3 { font-size: 12px; font-weight: 550; }
+
+.pet-3d .status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: #4a9268;
+  border-radius: 50%;
+}
+.pet-3d .status-dot.muted {
+  background: #9ea89d;
+}
+.pet-3d.card {
+  background: #fff;
+  border: 1px solid #dfe6dd;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 3px #32452e02;
+}
+.pet-3d.viewer {
+  height: 527px;
+  position: relative;
+  background: #edf0eb;
+}
+.pet-3d.viewer > div:has(> canvas) {
+  height: 100% !important;
+}
+.pet-3d .viewer-top {
+  position: absolute;
+  top: 20px;
+  left: 21px;
+  right: 21px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+}
+.pet-3d .small-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 1.25px;
+  color: #829084;
+}
+.pet-3d .viewer-top .small-label {
+  color: #72816e;
+}
+.pet-3d .viewer-tag {
+  font-size: 9px;
+  color: #7d8977;
+  background: #ffffff80;
+  border: 1px solid #d8e0d477;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.pet-3d .viewer-bottom {
+  position: absolute;
+  bottom: 18px;
+  left: 21px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.pet-3d .viewer-bottom > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #85907c;
+}
+.pet-3d .viewer-bottom button {
+  pointer-events: auto;
+}
+.pet-3d .viewer-bottom i {
+  height: 3px;
+  width: 3px;
+  background: #a5b09f;
+  border-radius: 50%;
+  display: inline-block;
+  margin: 0 2px;
+}
+.pet-3d .collar-note {
+  position: absolute;
+  bottom: 59px;
+  left: 22px;
+  font-size: 9px;
+  color: #7a8e7d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pet-3d .icon-button {
+  width: 31px;
+  height: 31px;
+  background: #ffffff9c;
+  border: 1px solid #dce3d8;
+  border-radius: 6px;
+  color: #6b7b64;
+}
+.pet-3d .icon-button:hover {
+  background: #edf5ee;
+}
+.pet-3d .scene-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 15px;
+  padding: 40px;
+  color: #74806a;
+}
+.pet-3d .scene-fallback p {
+  max-width: 330px;
+  line-height: 1.8;
+}
+@media (min-width: 1400px) {
+  .pet-3d.viewer {
+    height: 555px;
+  }
+}
+@media (max-width: 1150px) {
+  .pet-3d .viewer-tag {
+    max-width: 125px;
+    line-height: 1.5;
+    text-align: right;
+  }
+}
+@media (max-width: 800px) {
+  .pet-3d.viewer {
+    height: 450px;
+  }
+}
+@media (max-width: 800px) {
+  .pet-3d .viewer-tag {
+    max-width: none;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d.viewer {
+    height: 365px;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d .viewer-top {
+    top: 15px;
+    left: 15px;
+    right: 15px;
+    align-items: flex-start;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d .viewer-top .small-label {
+    font-size: 8px;
+    gap: 5px;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d .viewer-tag {
+    font-size: 7px;
+    max-width: 100px;
+    padding: 4px 5px;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d .viewer-bottom {
+    left: 15px;
+    right: 15px;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d .viewer-bottom > span {
+    font-size: 8px;
+    gap: 5px;
+  }
+}
+@media (max-width: 550px) {
+  .pet-3d .collar-note {
+    left: 16px;
+    font-size: 8px;
+  }
+}
