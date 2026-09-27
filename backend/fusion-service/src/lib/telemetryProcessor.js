@@ -3,7 +3,7 @@ const { classify, alertTier } = require("./fusionLogic");
 const { shouldPush } = require("./alertGate");
 const { publishToDog } = require("./pubsub");
 const { notifyOwner } = require("./push");
-const { resolveMatch } = require("./commandVerification");
+const { resolveMatch, findCueDefinition } = require("./commandVerification");
 
 const LOW_BATTERY_PCT = 15;
 
@@ -53,9 +53,28 @@ async function handleLowBattery(message, context) {
   }
 }
 
+// Wellness check-in (dogCheckIn.js): while device.checkInUntil hasn't elapsed, every
+// telemetry tick — not just anomaly ticks — gets republished live to the dashboard.
+// The firmware is also posting far more often during this window (collar.ino's
+// CHECKIN_POST_INTERVAL_MS), so this is genuinely a dense live stream of real
+// accel/gyro-derived motion, not just the normal duty-cycled trickle.
+async function publishCheckInStatus(message, context) {
+  const { resource: device } = await cosmos.devices.item(message.dogId, message.dogId).read().catch(() => ({ resource: null }));
+  if (!device?.checkInUntil || new Date(device.checkInUntil).getTime() < Date.now()) return;
+  await publishToDog(message.dogId, {
+    type: "checkInStatus",
+    dogId: message.dogId,
+    motionClass: message.motionClass,
+    motionEnergy: message.motionEnergy,
+    stillDurationSec: message.stillDurationSec,
+    timestamp: message.timestamp,
+  });
+}
+
 async function handleTelemetry(message, context) {
   await upsertDeviceStatus(message, context);
   await handleLowBattery(message, context);
+  await publishCheckInStatus(message, context);
 
   const baseline = await loadBaseline(message.dogId);
   const { eventClass, confidence, sourceSignals } = classify({
@@ -109,7 +128,9 @@ async function handleTelemetry(message, context) {
 }
 
 async function handleCommandResponse(message, context) {
-  const matchResult = resolveMatch(message.cue, message.observedPosture);
+  const { resource: dog } = await cosmos.dogs.item(message.dogId, message.dogId).read().catch(() => ({ resource: null }));
+  const cueDef = findCueDefinition(dog, message.cue);
+  const matchResult = resolveMatch(cueDef, message.observedPosture);
   const session = {
     id: message.cueSessionId,
     dogId: message.dogId,

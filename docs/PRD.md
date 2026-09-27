@@ -15,9 +15,9 @@ This PRD is the build-ready expansion of the Pawse plan. It does not invent hard
 
 Dogs can't ask for help. When an owner leaves the house, the dog's day becomes a black box.
 
-Pawse is a collar-mounted wearable that continuously reads a dog's **motion** (two MPU6050 accelerometer/gyroscope units) and **vocal pattern** (a condenser microphone, pattern only — never raw audio) and compares both against that specific dog's own learned baseline. When the reading deviates enough to look like physical distress (seizure-like shaking, limping, prolonged stillness) or emotional distress (whimpering, crying, atypical barking), the collar beeps immediately and pushes an alert to the owner's website.
+Pawse is a collar-mounted wearable that continuously reads a dog's **motion** (one MPU6050 accelerometer/gyroscope unit) and **vocal pattern** (a condenser microphone, pattern only — never raw audio) and compares both against that specific dog's own learned baseline. When the reading deviates enough to look like physical distress (seizure-like shaking, limping, prolonged stillness) or emotional distress (whimpering, crying, atypical barking), the collar beeps immediately and pushes an alert to the owner's website.
 
-A second, secondary feature rides the same hardware: the owner can send the dog a **beep cue** from the website (short beep = "sit", long beep = "come to owner"). The two MPU6050 units read whether the dog's resulting posture matches the cue, and that match/no-match becomes the reward signal for a reinforcement-learning loop that improves the dog's response over time. This is framed as a lightweight **communication channel** between owner and dog — not only a training mechanic.
+A second, secondary feature rides the same hardware: the owner can send the dog a **beep cue** from the website. It ships with two defaults (single beep = "sit", continuous beep = "handshake") but the cue vocabulary is owner-configurable — an owner can rename a cue, change its beep pattern, or add new ones to train and reward tricks with treats. The MPU6050 reads whether the dog's resulting posture matches the cue, and that match/no-match becomes the reward signal for a reinforcement-learning loop that improves the dog's response over time. This is framed as a lightweight **communication channel** between owner and dog — not only a training mechanic.
 
 Owner-facing surface for this build is a **website**, not a native app.
 
@@ -38,13 +38,14 @@ Distress shows up through two channels neither product fuses: **motion** (seizur
 
 ### v1 (MVP) goals
 
-1. Detect abnormal motion (seizure-like shaking, excessive pacing, prolonged stillness, limping-like gait) within seconds of onset, using two MPU6050 units.
+1. Detect abnormal motion (seizure-like shaking, excessive pacing, prolonged stillness, limping-like gait) within seconds of onset, using the collar's MPU6050.
 2. Detect distress vocalizations (whimpering, crying, atypical barking) separately from routine sound, using a condenser mic for **pattern analysis only** — no raw audio ever leaves the collar.
 3. Fuse motion + vocal-pattern signals into one distress confidence score, not two disconnected readings.
 4. Give the owner a local beep (short = minor anomaly, long = distress event) plus a website push, within the latency budget in §13.
 5. Build a rolling per-dog baseline so alerts fire on deviation from *that dog's* normal, not a generic threshold.
-6. Let the owner send a beep cue (short = "sit", long = "come to owner") from the website and see, via the two MPU6050 units, whether the dog's posture matched — improving over repeated trials via reinforcement learning.
-7. Keep false alerts low enough that owners trust notifications instead of muting them (target in §13).
+6. Let the owner send a beep cue (default: single beep = "sit", continuous beep = "handshake"; owner-configurable) from the website and see, via the MPU6050, whether the dog's posture matched — improving over repeated trials via reinforcement learning.
+7. Let the owner trigger an on-demand wellness check-in: a beep to get the dog's attention, followed by a short dense stream of live motion data so the owner can tell "just resting" from "not responding" in real time.
+8. Keep false alerts low enough that owners trust notifications instead of muting them (target in §13).
 
 ### Explicit non-goals (this version)
 
@@ -73,7 +74,7 @@ Other validated use cases for the same hardware (not built in v1, listed for con
 3. **Alerts are relative to the dog's own baseline**, not a fixed global threshold — breed/age/temperament defaults exist only to seed that baseline, not to replace it.
 4. **The collar's own beep never depends on connectivity.** On-device detection and the local buzzer must work with zero network.
 5. **"Come to owner" has no GPS in v1.** It is verified by posture only, and the website must show this as an approximate match, not a location-confirmed one.
-6. Do not add nav/pages beyond §7. Cue vocabulary stays at two cues (§11) until Phase 2.
+6. Do not add nav/pages beyond §7. Cue vocabulary ships with two defaults (§11) and is owner-configurable — an "approach"-type cue (posture `approached`, e.g. an owner-added "come to owner") must always report `approximate_match`, never a location-confirmed `match`; this doesn't relax for user-defined cues.
 
 ---
 
@@ -91,9 +92,9 @@ Conceptual, not a schema.
 
 **Event** — timestamp, class (`minor_anomaly` \| `distress` \| `low_battery` \| `sustained_stillness`), confidence, source signals (motion/vocal/both), owner feedback (`accurate` \| `false` \| unset).
 
-**CommandSession** — cue sent (`sit` \| `come`), timestamp, observed posture, match/no-match, feeds the RL reward log.
+**CommandSession** — cue sent (owner-configured cue id, default `sit` \| `handshake`), timestamp, observed posture, match/no-match, feeds the RL reward log.
 
-**Settings** — sensitivity (per anomaly type), quiet hours, alert-rate cap.
+**Settings** — sensitivity (per anomaly type), quiet hours, alert-rate cap, cue definitions (id, label, beep pattern, expected posture, approximate flag).
 
 ---
 
@@ -119,10 +120,10 @@ Do not add sub-nav beyond this table without a product decision — matches the 
 | Component | Purpose |
 |---|---|
 | ESP32 microcontroller | Brain of the device — sensor reads, on-device anomaly logic, drives the buzzer |
-| MPU6050 (accel + gyro) ×2 | Motion/posture sensing; two units on the collar for accurate posture detection and the command-loop reward signal |
+| MPU6050 (accel + gyro) ×1 | Motion/posture sensing for anomaly detection and the command-loop reward signal |
 | Condenser microphone | Vocal-pattern capture — pattern analysis only, never raw audio off the collar |
 | Buzzer | Two roles: local distress alert (short/long beep) and phone-triggered command cue |
-| Jumper wires (M-M, M-F) | Connects MPU6050 units + mic to the ESP32 |
+| Jumper wires (M-M, M-F) | Connects the MPU6050 + mic to the ESP32 |
 | Breadboard | Prototyping before a soldered version |
 | 5V 1A power adapter, or battery + USB-C | Untethered wearable demo power |
 | Resistor box | Pull-up/pull-down, mic circuit biasing, LED current limiting |
@@ -146,8 +147,9 @@ Audio-output module for voice-word playback (e.g. DFPlayer-style MP3 module + mi
 
 ### MVP (v1)
 
-- Two MPU6050 units + mic sensing, on-device posture + vocal-pattern baselining, on-device anomaly detection, local beep (short/long).
-- Phone-triggered command cues (short beep = "sit", long beep = "come to owner") + RL training loop using MPU6050 posture verification as the reward signal.
+- MPU6050 + mic sensing, on-device posture + vocal-pattern baselining, on-device anomaly detection, local beep (short/long).
+- Phone-triggered, owner-configurable command cues (default: single beep = "sit", continuous beep = "handshake") + RL training loop using MPU6050 posture verification as the reward signal.
+- Owner-initiated wellness check-in: a beep to the collar plus a short high-rate telemetry burst, so a website click gets a live real-time read of the dog's motion, not just a static status tile.
 - General-purpose training dataset (Kaggle-sourced) for initial classification, plus dog-specific baseline data recorded per collar.
 - WiFi connectivity to a companion **website**.
 - Push notifications for distress events.
@@ -174,9 +176,9 @@ IDs are stable. Acceptance criteria are the test.
 
 ### Motion & posture (FR-1.x)
 
-**FR-1.1 Dual-IMU posture read**
-Both MPU6050 units feed a combined posture/motion-energy read at all times the collar is powered.
-**AC:** Losing one of the two units degrades posture confidence (logged) but does not crash the detection loop.
+**FR-1.1 Motion read**
+The MPU6050 feeds a continuous posture/motion-energy read at all times the collar is powered.
+**AC:** A failed/unreadable sensor tick is skipped (logged), holding the last known class, rather than crashing the detection loop or fabricating a reading. Vocal-pattern distress detection (FR-2.x) is independent of this sensor, so a motion-read failure doesn't blind the collar entirely.
 
 **FR-1.2 Motion anomaly classes**
 Classify into `normal`, `minor_anomaly` (excessive pacing, brief unusual stillness), `distress` (seizure-like shaking, limping-like gait, prolonged stillness beyond baseline).
@@ -211,16 +213,20 @@ First 3–7 days flagged `learning` on the website. Anomaly logging stays on; pu
 ### Command loop (FR-5.x)
 
 **FR-5.1 Send a cue**
-Owner sends `sit` (short beep) or `come` (long beep) from the website.
-**AC:** Only these two cues exist in v1. No voice playback.
+Owner sends a cue from the website. Ships with two defaults: `sit` (single beep) and `handshake` (continuous beep). Owners can rename either, change its beep pattern, or add new cues from Settings.
+**AC:** No voice playback, ever — cues are beep-only regardless of how many an owner configures.
 
 **FR-5.2 Posture verification**
-Collar watches dual-IMU posture for a configurable window after the cue and reports match/no-match.
-**AC:** `sit` verified by stationary posture confirmation. `come` verified by posture only (no GPS) — website labels this result "approximate match," never implies location confirmation.
+Collar watches MPU6050 posture for a configurable window after the cue and reports match/no-match against that cue's configured expected posture.
+**AC:** `sit` verified by stationary posture confirmation. Any cue configured with `approximate: true` (posture-only, no GPS — e.g. an owner-added "come to owner") is verified by posture only and the website labels the result "approximate match," never implies location confirmation. This flag can't be turned off for approach-type cues.
 
 **FR-5.3 RL reward loop**
 Match/no-match feeds a reinforcement-learning update so response accuracy is expected to improve over repeated trials.
 **AC:** Command-session history (§6 CommandSession) is visible per cue on the Command page.
+
+**FR-5.4 Wellness check-in**
+Owner triggers an on-demand check-in from the website (Command page or Dashboard). The collar beeps once (distinct from any trainable cue) to get the dog's attention, then streams motion telemetry at a much higher rate than the normal duty cycle for a short window, so the dashboard shows a dense live read of real motion instead of the usual trickle.
+**AC:** Not a trainable cue — no posture match/no-match is scored, no CommandSession is created, and it doesn't feed the RL loop. Purpose is purely "is my dog actually okay right now," distinguishing quiet-but-fine from quiet-and-unresponsive using real accel/gyro data, not a guess.
 
 ### Website (FR-6.x)
 
@@ -238,14 +244,14 @@ Per-anomaly-type sensitivity, quiet hours.
 
 ---
 
-## 11. Command cue vocabulary (locked for v1)
+## 11. Command cue vocabulary
 
-| Cue | Meaning |
-|---|---|
-| Short beep | "Sit" |
-| Long beep | "Come to owner" |
+| Cue | Default meaning | Beep pattern |
+|---|---|---|
+| `sit` | "Sit" | Single beep |
+| `handshake` | "Handshake" | Continuous beep |
 
-Voice-word cues are Phase 2, pending the audio-output hardware decision in §8.
+These are the shipped defaults, not a hard lock — owners can rename them, change the beep pattern, or add their own cues from Settings (§7) to train and reward additional tricks. Every cue definition carries: an id/label, a beep pattern, an expected posture used for match verification, and an `approximate` flag (§10 FR-5.2) that can't be cleared for posture-only "approach" cues. Voice-word cues are still Phase 2, pending the audio-output hardware decision in §8 — configurability of the *beep* vocabulary doesn't pull voice playback forward.
 
 ---
 
@@ -281,7 +287,7 @@ The product must behave calmly here — not new pages.
 
 **Baseline / detection**
 - Dog is genuinely new to the collar (day 1) → `learning` state, hard-ceiling-only alerting (FR-4.2).
-- One MPU6050 fails/disconnects → degraded posture confidence, logged, collar keeps running on the remaining unit + mic.
+- The MPU6050 fails/disconnects → motion classification pauses (logged) until it recovers; vocal-pattern distress detection via the mic keeps running independently, so the collar isn't fully blind.
 - Ambient household noise (TV, other pets) → vocal classifier must not treat it as the dog's own pattern.
 
 **Alerting**
@@ -330,12 +336,14 @@ The product must behave calmly here — not new pages.
 Do not reopen in implementation without an explicit product change:
 
 - Product name: **Pawse** (renamed from PetPulse; repo codename was Bandhan). Team: **Origami Treats**.
-- Core deliverable this build: **passive distress monitoring** (dual MPU6050 + mic + local beep). Command-training loop is an added feature, not the primary deliverable.
+- Core deliverable this build: **passive distress monitoring** (MPU6050 + mic + local beep). Command-training loop is an added feature, not the primary deliverable.
+- Hardware is a single MPU6050 (superseded 2026-09-27 from an earlier two-unit assumption; see SYSTEM_DESIGN.md §5 note) — FR-1.1 and the BOM (§8) reflect this.
+- Wellness check-in is a third command-loop feature alongside sit/handshake (§11): owner-initiated, not a trainable cue, no posture match is scored for it.
 - No speaker, no raw audio, no two-way live audio, ever — mic is pattern-analysis only.
-- Command cue vocabulary is beep-only for v1: short = "sit", long = "come to owner". It is framed as a communication channel between owner and dog, not only a training mechanic.
+- Command cue vocabulary is beep-only for v1, owner-configurable, shipping with two defaults: single beep = "sit", continuous beep = "handshake" (replaces the earlier "come to owner" default — superseded 2026-09-27; see SYSTEM_DESIGN.md §5 note). It is framed as a communication channel between owner and dog, not only a training mechanic.
 - Voice-word playback, smell-based triggers, and heart-rate/pulse monitoring are Phase 2 — not this build.
 - Owner-facing surface is a **website**, not a native mobile app, for this build.
-- Data pipeline: Kaggle-sourced general dataset (60–70% train / remainder split ~15–20% each val/test) plus per-dog baseline recorded from the actual collar.
+- Data pipeline: real public dog-IMU dataset (Vehkaoja et al. dog movement/behavior sensor dataset, dual collar+harness accelerometer/gyroscope, Mendeley DOI 10.17632/vxhx934tbn, CC BY 4.0 — see SYSTEM_DESIGN.md §12 for how it seeds the on-device classifier) plus per-dog baseline recorded from the actual collar.
 - Connectivity is **WiFi**, not BLE, for the primary uplink — BLE range would tie monitoring to "phone near the dog," which defeats the "owner is out of the house" use case.
 - "Come to owner" is verified by posture only in v1 — no GPS. This is a known, disclosed limitation, not silently overstated.
 - One owner, one dog, one collar in v1. Multi-dog and B2B are Phase 2.

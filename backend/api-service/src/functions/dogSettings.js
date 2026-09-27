@@ -38,10 +38,22 @@ app.http("dogSettings", {
   },
 });
 
+// PRD §11: shipped defaults, not a lock — owners can rename, retarget, or add cues.
+// `approximate` stays hardcoded true for any cue an owner sets expectedPosture:
+// "approached" on (lib/commandVerification.js enforces this server-side too; it
+// can't be defeated by what's stored here).
+function defaultCues() {
+  return [
+    { id: "sit", label: "Sit", beepPattern: "single", expectedPosture: "stationary", approximate: false },
+    { id: "handshake", label: "Handshake", beepPattern: "continuous", expectedPosture: "paw_raised", approximate: false },
+  ];
+}
+
 function defaultSettings() {
   return {
     sensitivity: { minor_anomaly: "medium", distress: "medium", sustained_stillness: "medium" },
     quietHours: null,
     alertRateCapPerHour: 1,
+    cues: defaultCues(),
   };
 }

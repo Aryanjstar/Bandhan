@@ -1,0 +1,13 @@
+{
+  "name": "pawse-device-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stands in for the physical ESP32 collar (firmware/collar/collar.ino) so the distress-detection and command-loop pipeline can be exercised end to end before real hardware is soldered. Not deployed anywhere — a local dev tool.",
+  "main": "simulate.js",
+  "scripts": {
+    "start": "node simulate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

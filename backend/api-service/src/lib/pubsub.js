@@ -21,4 +21,11 @@ async function getClientAccessUrl(dogId) {
   return token.url;
 }
 
-module.exports = { getClientAccessUrl };
+// Used by dogCheckIn.js to tell an already-open dashboard a wellness check-in just
+// started, before the first telemetryProcessor.js-published checkInStatus tick lands.
+async function publishToDog(dogId, payload) {
+  const client = await getClient();
+  await client.group(`dog-${dogId}`).sendToAll(payload, { contentType: "application/json" });
+}
+
+module.exports = { getClientAccessUrl, publishToDog };

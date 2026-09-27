@@ -28,14 +28,12 @@ Source of truth for scope: [PRD.md](./PRD.md). This doc is the engineering expan
 ```mermaid
 flowchart LR
     subgraph Collar["Collar (ESP32)"]
-        IMU1[MPU6050 #1]
-        IMU2[MPU6050 #2]
+        IMU[MPU6050]
         MIC[Condenser Mic]
         BUZ[Buzzer]
         LED[Status LED]
         TinyML[On-device classifier\n+ rolling baseline]
-        IMU1 --> TinyML
-        IMU2 --> TinyML
+        IMU --> TinyML
         MIC --> TinyML
         TinyML -- local anomaly --> BUZ
         TinyML -- status --> LED
@@ -113,16 +111,20 @@ All containers partitioned by `dogId` for query locality. `deviceId` and `dogId`
 | `devices` | `/dogId` | deviceId, firmwareVersion, batteryPct, lastSeenAt |
 | `events` | `/dogId` | timestamp, class (`minor_anomaly`\|`distress`\|`low_battery`\|`sustained_stillness`), confidence, sourceSignals, feedback (`accurate`\|`false`\|unset) |
 | `baselines` | `/dogId` | rolling motion-energy mean/variance, rest-duration pattern, bark-rate pattern, `learning` flag, snapshot timestamp |
-| `commandSessions` | `/dogId` | cue (`sit`\|`come`), timestamp, observedPosture, matchResult (`match`\|`no_match`\|`approximate_match`\|`timeout`) |
+| `commandSessions` | `/dogId` | cue (owner-configured cue id, default `sit`\|`handshake`), timestamp, observedPosture, matchResult (`match`\|`no_match`\|`approximate_match`\|`timeout`) |
 | `owners` | `/ownerId` | name, unique email, bcrypt passwordHash, pushSubscriptions (Web Push subscription objects) — added during implementation; PRD §6 defines Owner but the original container table (this section) omitted it |
 
 `matchResult` carries `approximate_match` as a distinct value (not folded into `match`) specifically so the website can render PRD FR-5.2's "approximate, not location-confirmed" requirement from the data itself, not from UI-only copy that could drift out of sync.
+
+> **2026-09-27 note:** the collar hardware is a single MPU6050, not the dual-IMU layout assumed earlier in this doc and in the PRD's original FR-1.1/BOM — the architecture diagram (§2), FR-1.1, and the hardware BOM (PRD §8) are updated to match. There's no second unit to average against or fall back to; a failed/unreadable sensor tick is skipped (logged) rather than "degraded but continuing."
+
+> **2026-09-27 note:** the cue vocabulary is no longer a hardcoded two-value enum (`sit`/`come`). `dogs.settings.cues` now holds an array of cue definitions (`{ id, label, beepPattern, expectedPosture, approximate }`); `sit`/`handshake` are the seeded defaults (PRD §11), but owners can rename, retarget, or add cues. `resolveMatch` (fusion-service `lib/commandVerification.js`) looks up the cue definition instead of switching on a literal cue string — `approximate` stays hardcoded `true` for any cue whose `expectedPosture` is `approached`, so no configuration can make an approach-type cue read as GPS-confirmed.
 
 ---
 
 ## 6. Data flow — passive detection to alert
 
-1. Dog moves/vocalizes → both MPU6050 units + mic feed the ESP32's on-device classifier (< 1s).
+1. Dog moves/vocalizes → the MPU6050 + mic feed the ESP32's on-device classifier (< 1s).
 2. On `distress`: buzzer fires (long beep) and LED goes red — **this step has no network dependency** (PRD §5 rule 4).
 3. Collar uplinks the feature-vector event over WiFi/MQTT to `bandhan-iothub-dev` (device-to-cloud).
 4. IoT Hub's built-in Event Hub-compatible endpoint triggers `bandhan-fn-fusion`.
@@ -132,12 +134,20 @@ All containers partitioned by `dogId` for query locality. `deviceId` and `dogId`
 
 ## 6.1 Data flow — command-training loop
 
-1. Owner clicks "sit" or "come to owner" on the Command page → `POST /api/dogs/{id}/command` on `bandhan-fn-api`.
+1. Owner clicks a configured cue (default: "sit" or "handshake") on the Command page → `POST /api/dogs/{id}/command` on `bandhan-fn-api`.
 2. The function sends a cloud-to-device message to `bandhan-iothub-dev` targeting that `deviceId`.
 3. IoT Hub delivers it to the collar (assuming it's online — see §9.3 for the offline case).
-4. Collar plays the corresponding beep, watches dual-IMU posture for a configurable window, and uplinks the observed posture as a device-to-cloud event.
+4. Collar plays the corresponding beep, watches MPU6050 posture for a configurable window, and uplinks the observed posture as a device-to-cloud event.
 5. `bandhan-fn-fusion` computes match/no-match/approximate-match/timeout, writes a `commandSessions` document, and pushes the result to the website over `bandhan-pubsub-dev`.
 6. The match outcome is the reward signal for the RL update in `bandhan-retrain-job`'s next scheduled run — the loop doesn't retrain synchronously per trial.
+
+## 6.2 Data flow — wellness check-in
+
+Not a trainable cue (§6.1) — no CommandSession, no posture match/no-match, no RL reward. Purpose is purely "is my dog actually okay right now."
+
+1. Owner clicks "Check in" → `POST /api/dogs/{id}/check-in` on `bandhan-fn-api`. This writes `devices.pendingCommand = { cue: "check_in", ... }` and `devices.checkInUntil` (a short window, e.g. 15s), and best-effort attempts an IoT Hub C2D send (works once a device identity is provisioned; local-only collars rely entirely on step 2).
+2. The collar polls `GET /api/devices/{deviceId}/pending-command` every few seconds (§9.12 — there's no persistent local push channel yet). On seeing `check_in`, it plays a beep distinct from any trainable cue, then switches its own telemetry post rate from the normal duty cycle to a short high-rate burst (`firmware/collar/collar.ino`'s `CHECKIN_BURST_MS`).
+3. Each telemetry tick that lands while `devices.checkInUntil` hasn't elapsed gets republished live to the dog's Web PubSub group as `checkInStatus` by `lib/telemetryProcessor.js` — *every* tick, not just anomaly ticks (contrast with §6 step 6, which only publishes on `distress`/`minor_anomaly`). The dashboard renders this as a dense live feed of real motion, letting the owner distinguish "quiet but fine" from "quiet and not responding" using actual sensor data instead of a static tile.
 
 ---
 
@@ -149,8 +159,10 @@ All containers partitioned by `dogId` for query locality. `deviceId` and `dogId`
 | `/api/dogs/{id}/events` | GET | Paginated event feed (filters: severity, date range) |
 | `/api/dogs/{id}/baseline` | GET | Current baseline summary + trend series |
 | `/api/dogs/{id}/settings` | GET/PUT | Sensitivity, quiet hours → writes IoT Hub device twin |
-| `/api/dogs/{id}/command` | POST | Send a cue (`sit`/`come`) → IoT Hub C2D message |
+| `/api/dogs/{id}/command` | POST | Send a configured cue (default `sit`/`handshake`) → IoT Hub C2D message |
 | `/api/dogs/{id}/command-sessions` | GET | History of cue → posture-match outcomes |
+| `/api/dogs/{id}/check-in` | POST | Wellness check-in: queue a check-in beep + open a live-telemetry window (§6.2) |
+| `/api/devices/{deviceId}/pending-command` | GET | Device-facing poll for a queued cue/check-in (local-only mode, §9.12) |
 | `/api/events/{id}/feedback` | POST | Owner marks alert accurate/false → retrain signal |
 | `/api/devices/{id}/status` | GET | Battery, last-seen, connectivity state |
 
@@ -206,6 +218,9 @@ Manual registration via the website (owner enters a code printed on the collar) 
 ### 9.11 Privacy / retention (PRD §5 rule 1, §15)
 Raw audio never leaves the collar — enforced in firmware, not policy. Cosmos DB event retention: 90 days hot, then rolled into `bandhan-storage-dev` (cool → archive tier via lifecycle policy). Feature-vector granularity is not kept indefinitely — only daily rollups survive past the 90-day window.
 
+### 9.12 Command/check-in delivery without a local push channel
+There's no persistent connection or push transport to a local-only collar yet (only the IoT Hub C2D path, §6.1, which needs a provisioned device identity). `devicePendingCommand.js` is a poll-based stand-in: the collar asks every few seconds, the server hands back and clears (`pendingCommand = null`) whatever's queued — at-most-once delivery, so a dropped poll just means the next owner action tries again, never a duplicate beep. `devices` is partitioned by `/dogId` (§5) but the collar only knows its own `deviceId`, so this lookup is a cross-partition query ordered by `_ts DESC` — deliberately picking the most-recently-written match, because re-pairing the same physical `deviceId` to a different dog (`dogsPairDevice.js`) creates a new document instead of moving the old one, so stale rows for a reused `deviceId` can linger in this dev/test environment.
+
 ---
 
 ## 10. Security
@@ -244,6 +259,7 @@ Stated plainly rather than glossed over, so nobody mistakes "not built yet" for 
 - **No device provisioning service.** Manual code-entry pairing (§9.10) doesn't scale past a handful of collars; add DPS before onboarding beyond a pilot.
 - **No OTA firmware updates.** A firmware bug on a deployed collar currently means physically retrieving it. Fine for a pilot with a handful of units in hand; not fine at real scale.
 - **No multi-tenant isolation testing.** The API scopes by owner (§8) but this hasn't been adversarially tested — do that before any real user's data sits next to another's, even though v1 is one-owner-per-collar by design (§9.6 note).
-- **Cloud fusion model is a placeholder shape, not a trained model yet.** §6 describes the pipeline; the actual classifier (Kaggle-seeded + per-dog baseline, PRD §17) still needs to be built and evaluated against PRD §13's recall/false-positive targets before this is more than an architecture.
+- **Cloud fusion model (`lib/fusionLogic.js`) is a rule-based combiner, not a trained model.** It correctly fuses an already-classified `motionClass`/`vocalClass` into one confidence score (§6), but the classes it fuses depend on the on-device motion classifier below — evaluating end-to-end against PRD §13's recall/false-positive targets still needs real pilot data, not just the public dataset.
+- **On-device motion classifier (`firmware/collar/collar.ino`, mirrored for local testing in `backend/fusion-service/src/lib/motionClassifier.js`) uses engineering-default thresholds, not the dataset's own trained model.** Seeded from the real dog-IMU dataset (PRD §17: Vehkaoja et al. dog movement/behavior sensor dataset, dual collar+harness accelerometer/gyroscope, Mendeley DOI 10.17632/vxhx934tbn, CC BY 4.0, plus its "body shake" companion set at DOI 10.17632/mpph6bmn7g for the distress proxy) for the *behavior taxonomy* (the dataset itself uses a dual collar+harness sensor layout; the actual collar hardware is single-MPU6050, §5 note — the taxonomy transfers, the sensor placement doesn't), but the dataset's own paper reports no published acceleration-magnitude thresholds — so `motionEnergy`/jerk cutoffs are literature-informed engineering defaults, explicitly meant to be superseded by each dog's own baseline (already the design in `lib/fusionLogic.js` and the cold-start flow, §9.2) rather than treated as final. Limping-like gait detection is a known simplification: the classifier only reliably distinguishes stillness, sustained motion, and shake-pattern (jerk-spike) events — asymmetric-gait detection needs a trained model, deferred past this pilot.
 - **IoT Hub free tier is a hard cap (8,000 msgs/day, 1 free instance/subscription).** Fine for a pilot; the first thing to check before adding a second collar to the same subscription.
 - **Retrain job has no rollback.** A bad weekly retrain currently just ships — add a held-out validation gate before promoting a new model version, once there's a real model to protect.

@@ -6,8 +6,14 @@ const { requireOwnedDog } = require("../lib/ownership");
 const { sendCommand } = require("../lib/iothub");
 const { json, errorResponse } = require("../lib/respond");
 
-const CUES = new Set(["sit", "come"]); // PRD §11: cue vocabulary is locked to these two in v1
 const RESPONSE_WINDOW_SEC = 60;
+
+// PRD §11: defaults only — an owner's dog.settings.cues (seeded by dogSettings.js
+// defaultCues()) is the real source of truth so renamed/added cues validate here too.
+const FALLBACK_CUES = [
+  { id: "sit", label: "Sit", beepPattern: "single", expectedPosture: "stationary", approximate: false },
+  { id: "handshake", label: "Handshake", beepPattern: "continuous", expectedPosture: "paw_raised", approximate: false },
+];
 
 // PRD FR-5.1/FR-5.2: send a cue, then watch dual-IMU posture for a configurable window.
 // The C2D send succeeding does NOT mean the collar received it (SYSTEM_DESIGN §9.3) —
@@ -21,10 +27,12 @@ app.http("dogCommand", {
     try {
       const ownerId = await requireOwner(request);
       const dogId = request.params.id;
-      await requireOwnedDog(dogId, ownerId);
+      const dog = await requireOwnedDog(dogId, ownerId);
 
       const body = await request.json();
-      if (!CUES.has(body.cue)) return json(400, { error: "cue must be 'sit' or 'come'" });
+      const cues = dog.settings?.cues?.length ? dog.settings.cues : FALLBACK_CUES;
+      const cueDef = cues.find((c) => c.id === body.cue);
+      if (!cueDef) return json(400, { error: `cue must be one of: ${cues.map((c) => c.id).join(", ")}` });
 
       const { resource: device } = await cosmos.devices.item(dogId, dogId).read().catch(() => ({ resource: null }));
       if (!device?.deviceId) return json(409, { error: "no device paired to this dog" });
@@ -34,7 +42,7 @@ app.http("dogCommand", {
       const session = {
         id: cueSessionId,
         dogId,
-        cue: body.cue,
+        cue: cueDef.id,
         timestamp,
         observedPosture: null,
         matchResult: "pending",
@@ -45,7 +53,8 @@ app.http("dogCommand", {
       await sendCommand(device.deviceId, {
         type: "command",
         cueSessionId,
-        cue: body.cue,
+        cue: cueDef.id,
+        beepPattern: cueDef.beepPattern,
         responseWindowSec: RESPONSE_WINDOW_SEC,
       });
 
