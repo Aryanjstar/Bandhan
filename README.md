@@ -22,8 +22,8 @@ Two MPU6050 units (accelerometer + gyroscope) and a condenser mic on the collar 
 - [x] Idea, research, problem statement
 - [x] PRD (v1) + system design
 - [ ] Firmware — sensor loop, on-device classifier, beep logic
-- [ ] Azure backend — IoT Hub, fusion function, Cosmos DB, website API
-- [ ] Website — dashboard, event feed, command controls
+- [x] Azure backend — IoT Hub, fusion function, Cosmos DB, website API (`rg-bandhan-dev`, `centralindia`) — see [backend/README.md](backend/README.md)
+- [ ] Website — dashboard, event feed, command controls (`frontend/`, not started)
 - [ ] Pilot — first real collar on a first real dog
 
 ## Stack (planned)
