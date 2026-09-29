@@ -1,5 +1,8 @@
 # Pawse
 
+Problem Statement: Created the project for when owner leaves the house or leaves the dog with someone else, the dog's day becomes a black box the owner has no way to know whether the dog is calm, anxious, in pain, or in genuine danger until they physically return.
+([PDF](https://drive.google.com/file/d/1zcKOLbtUy1UHtV7eVkzTtOo5BbHh0dMh/view?usp=sharing)): Link to our full-fledged story and project description
+
 A collar that watches how a dog moves and sounds while its owner is away, learns what's normal for that specific dog, and alerts the owner the moment something looks like physical or emotional distress.
 
 This repo is early. The **PRD and system design are locked**; the onboarding flow of the website exists (`frontend/`), the dashboard and firmware are not written yet.
